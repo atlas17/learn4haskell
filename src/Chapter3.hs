@@ -379,25 +379,26 @@ after the fight. The battle has the following possible outcomes:
 
 -}
 
-data Knight = Knight
-  { knightName :: String
-  , knightHealth :: Int
-  , knightAttack :: Int
-  , knightGold :: Int
+-- Same names as last task, so I decided to rename here
+data Knight1 = Knight1
+  { knight1Name :: String
+  , knight1Health :: Int
+  , knight1Attack :: Int
+  , knight1Gold :: Int
   } deriving (Show)
 
-data Monster = Monster
-  { monsterName :: String
-  , monsterHealth :: Int
-  , monsterAttack :: Int
-  , monsterGold :: Int
+data Monster1 = Monster1
+  { monster1Name :: String
+  , monster1Health :: Int
+  , monster1Attack :: Int
+  , monster1Gold :: Int
   } deriving (Show)
 
-fight :: Monster -> Knight -> Int
-fight m k
-  | knightAttack k >= monsterHealth m = knightGold k + monsterGold m
-  | monsterAttack m >= knightHealth k = -1
-  | otherwise = knightGold k
+fight1 :: Monster1 -> Knight1 -> Int
+fight1 m k
+  | knight1Attack k >= monster1Health m = knight1Gold k + monster1Gold m
+  | monster1Attack m >= knight1Health k = -1
+  | otherwise = knight1Gold k
 
 {- |
 =🛡= Sum types
@@ -1141,6 +1142,7 @@ Implement data types and typeclasses, describing such a battle between two
 contestants, and write a function that decides the outcome of a fight!
 -}
 
+-- Couldn't make it simpler :(
 data KnightAction
   = KnightAttack
   | Drink
@@ -1152,31 +1154,177 @@ data MonsterAction
   | Run
   deriving (Show)
 
-data Action
-  = Attack Int
-  | Buff KnightAction
-  | Surrender
-  deriving (Show)
-
 data Knight = Knight
   { knightHealth :: Int
   , knightAttack :: Int
   , knightDefense :: Int
   , knightActions :: [KnightAction]
+  , baseKnightHealth :: Int
+  , baseKnightHealthIncrease :: Int
+  , baseKnightDefense :: Int
+  , baseKnightDefenseIncrease :: Int
   } deriving (Show)
 
 data Monster = Monster
   { monsterHealth :: Int
   , monsterAttack :: Int
-  , monsterAction :: [MonsterAction]
+  , monsterActions :: [MonsterAction]
   } deriving (Show)
 
+data ActionType
+  = GenericAttack
+  | SpecialAction
+  deriving (Show)
+
+getFirstKnightAction :: Knight -> KnightAction
+getFirstKnightAction Knight { knightActions = (x:_) } = x
+getFirstKnightAction _ = error "Forgot to 'cycle' knight actions"
+
+getFirstMonsterAction :: Monster -> MonsterAction
+getFirstMonsterAction Monster { monsterActions = (x:_) } = x
+getFirstMonsterAction _ = error "Forgot to 'cycle' monster actions"
+
+getFollowingKnightActions :: Knight -> [KnightAction]
+getFollowingKnightActions Knight { knightActions = (_:xs) } = xs
+getFollowingKnightActions _ = error "Forgot to 'cycle' knight actions"
+
+getFollowingMonsterAction :: Monster -> [MonsterAction]
+getFollowingMonsterAction Monster { monsterActions = (_:xs) } = xs
+getFollowingMonsterAction _ = error "Forgot to 'cycle' monster actions"
+
+
 class Fighter a where
-  nextAction :: a -> (Action, a)
+  nextAction :: a -> ActionType
+  processSpecial :: a -> a
+  processAttack :: a -> Int
+  proceed :: a -> a
+  getHealth :: a -> Int
+  takeDamage :: a -> Int -> a
 
-fight :: (Fighter a, Fighter b) => a -> b -> String
-fight = error "Not implemented"
+instance Fighter Knight where
+  nextAction :: Knight -> ActionType
+  nextAction k = case getFirstKnightAction k of
+    KnightAttack -> GenericAttack
+    _            -> SpecialAction
 
+  processSpecial :: Knight -> Knight
+  processSpecial k = case getFirstKnightAction k of
+    Drink -> k { knightHealth = knightHealth k + drinkAmount k }
+    Cast  -> k { knightDefense = knightDefense k + buffAmount k }
+    _     -> error "Something went wrong"
+
+  processAttack :: Knight -> Int
+  processAttack = knightAttack
+
+  proceed :: Knight -> Knight
+  proceed k = k { knightActions = getFollowingKnightActions k }
+
+  getHealth :: Knight -> Int
+  getHealth = knightHealth
+
+  -- 'Double' 'hacks' here and in a few places below: because I couldn't get it to work otherwise,
+  -- needed to match types.
+  takeDamage :: Knight -> Int -> Knight
+  takeDamage k damage = let d = (fromIntegral damage) :: Double
+                         in k { knightHealth = min 0 (knightHealth k - (floor (d * (d / 100.0)))) }
+
+-- Doesn't allow to heal over the base health
+drinkAmount :: Knight -> Int
+drinkAmount k = min (baseKnightHealthIncrease k) (baseKnightHealth k - (baseKnightHealth k))
+
+-- Diminishes buff amount when approaching 1.5x of base defense
+buffAmount :: Knight -> Int
+buffAmount k = let b = fromIntegral (baseKnightDefenseIncrease k) :: Double
+                   cap = 1.5 * fromIntegral (baseKnightDefense k)
+                   c = fromIntegral (knightDefense k)
+                in floor (b * ((cap - c) / cap))
+
+instance Fighter Monster where
+  nextAction :: Monster -> ActionType
+  nextAction m = case getFirstMonsterAction m of
+    MonsterAttack -> GenericAttack
+    _             -> SpecialAction
+
+  processSpecial :: Monster -> Monster
+  processSpecial m = case getFirstMonsterAction m of
+    Run -> m { monsterHealth = 0 }
+    _   -> error "Something went wrong"
+
+  processAttack :: Monster -> Int
+  processAttack = monsterAttack
+
+  proceed :: Monster -> Monster
+  proceed m = m { monsterActions = getFollowingMonsterAction m }
+
+  getHealth :: Monster -> Int
+  getHealth = monsterHealth
+
+  takeDamage :: Monster -> Int -> Monster
+  takeDamage m d = m { monsterHealth = min 0 (monsterHealth m - d) }
+
+data Turn
+  = First
+  | Second
+  deriving (Show)
+
+nextTurn :: Turn -> Turn
+nextTurn First = Second
+nextTurn Second = First
+
+updateF1 :: (Fighter a, Fighter b) => a -> b -> Turn -> a
+updateF1 f1 f2 t = case t of
+  First  -> case nextAction f1 of
+    GenericAttack -> proceed f1
+    SpecialAction -> proceed (processSpecial f1)
+  Second -> case nextAction f2 of
+    GenericAttack -> takeDamage f1 (processAttack f2)
+    SpecialAction -> f1
+  
+updateF2 :: (Fighter a, Fighter b) => a -> b -> Turn -> b
+updateF2 f1 f2 t = case t of
+  First  -> case nextAction f1 of
+    GenericAttack -> takeDamage f2 (processAttack f1)
+    SpecialAction -> f2
+  Second -> case nextAction f2 of
+    GenericAttack -> proceed f2
+    SpecialAction -> proceed (processSpecial f2)
+
+fight :: (Fighter a, Fighter b) => a -> b -> Turn -> String
+fight f1 f2 t = case getHealth f1 of
+  0 -> "Fighter 2 wins!"
+  _ -> case getHealth f2 of
+    0 -> "Fighter 1 wins!"
+    _ -> fight (updateF1 f1 f2 t) (updateF2 f1 f2 t) (nextTurn t)
+
+arthur :: Knight
+arthur = Knight
+  { knightHealth = 100
+  , knightAttack = 25
+  , knightDefense = 100
+  , knightActions = cycle [KnightAttack, Drink, KnightAttack, Cast]
+  , baseKnightHealth = 100
+  , baseKnightHealthIncrease = 25
+  , baseKnightDefense = 100
+  , baseKnightDefenseIncrease = 25
+  }
+
+hogger :: Monster
+hogger = Monster
+  { monsterHealth = 100
+  , monsterAttack = 25
+  , monsterActions = cycle (replicate 4 MonsterAttack ++ [Run])
+  }
+
+{-
+λ> fight arthur hogger First
+"Fighter 1 wins!"
+λ> fight arthur hogger Second
+"Fighter 2 wins!"
+λ> 
+-}
+
+result :: String
+result = fight arthur hogger First
 
 {-
 You did it! Now it is time to open pull request with your changes
