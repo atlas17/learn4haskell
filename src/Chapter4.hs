@@ -699,6 +699,23 @@ Specifically,
  ❃ Implement the function to convert Tree to list
 -}
 
+data BTree a
+  = End
+  | Node a (BTree a) (BTree a)
+  deriving (Show)
+
+instance Functor BTree where
+  fmap :: (a -> b) -> BTree a -> BTree b
+  fmap _ End = End
+  fmap f (Node x ta tb) = Node (f x) (fmap f ta) (fmap f tb)
+
+reverseTree :: BTree a -> BTree a
+reverseTree End = End
+reverseTree (Node x ta tb) = Node x (reverseTree tb) (reverseTree ta)
+
+treeToList :: BTree a -> [a]
+treeToList End = []
+treeToList (Node x ta tb) = x : (treeToList ta) ++ treeToList tb
 
 {-
 You did it! Now it is time to open pull request with your changes
