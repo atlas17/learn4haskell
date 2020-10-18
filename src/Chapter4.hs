@@ -562,7 +562,7 @@ but only if the number is even.
 -}
 half :: Int -> Maybe Int
 half n
-    | even n = Just (div n 2)
+    | even n    = Just (div n 2)
     | otherwise = Nothing
 
 {- |
@@ -619,7 +619,7 @@ Implement the 'Monad' instance for our 'Secret' type.
 -}
 instance Monad (Secret e) where
     (>>=) :: Secret e a -> (a -> Secret e b) -> Secret e b
-    Trap x >>= _ = Trap x
+    Trap x   >>= _ = Trap x
     Reward x >>= f = f x
 
 
@@ -634,7 +634,7 @@ Implement the 'Monad' instance for our lists.
 
 instance Monad List where
   (>>=) :: List a -> (a -> List b) -> List b
-  Empty >>= _ = Empty
+  Empty     >>= _ = Empty
   Cons x xs >>= f = join (f x) (xs >>= f)
 
 {- |
