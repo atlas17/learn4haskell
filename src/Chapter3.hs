@@ -1315,10 +1315,10 @@ hogger = Monster
   , monsterActions = cycle (replicate 4 MonsterAttack ++ [Run])
   }
 
-{-
-λ> fight arthur hogger First
+{- |
+>>> fight arthur hogger First
 "Fighter 1 wins!"
-λ> fight arthur hogger Second
+>>> fight arthur hogger Second
 "Fighter 2 wins!"
 λ> 
 -}
