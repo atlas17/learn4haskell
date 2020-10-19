@@ -343,6 +343,11 @@ Define the Book product data type. You can take inspiration from our description
 of a book, but you are not limited only by the book properties we described.
 Create your own book type of your dreams!
 -}
+data Book = Book
+  { bookTitle :: String
+  , bookAuthor :: String
+  , bookYear :: Int
+  } deriving (Show)
 
 {- |
 =⚔️= Task 2
@@ -373,6 +378,27 @@ after the fight. The battle has the following possible outcomes:
    doesn't earn any money and keeps what they had before.
 
 -}
+
+-- Same names as last task, so I decided to rename here
+data Knight1 = Knight1
+  { knight1Name :: String
+  , knight1Health :: Int
+  , knight1Attack :: Int
+  , knight1Gold :: Int
+  } deriving (Show)
+
+data Monster1 = Monster1
+  { monster1Name :: String
+  , monster1Health :: Int
+  , monster1Attack :: Int
+  , monster1Gold :: Int
+  } deriving (Show)
+
+fight1 :: Monster1 -> Knight1 -> Int
+fight1 m k
+  | knight1Attack k >= monster1Health m = knight1Gold k + monster1Gold m
+  | monster1Attack m >= knight1Health k = -1
+  | otherwise = knight1Gold k
 
 {- |
 =🛡= Sum types
@@ -460,6 +486,16 @@ Create a simple enumeration for the meal types (e.g. breakfast). The one who
 comes up with the most number of names wins the challenge. Use your creativity!
 -}
 
+data Meal
+  = Breakfast
+  | Brunch
+  | Elevenses
+  | Lunch
+  | Tea
+  | Dinner
+  | Supper
+
+
 {- |
 =⚔️= Task 4
 
@@ -479,6 +515,50 @@ After defining the city, implement the following functions:
    complicated task, walls can be built only if the city has a castle
    and at least 10 living __people__ inside in all houses of the city totally.
 -}
+
+data Castle
+  = NoCastle
+  | Castle String
+  deriving (Show)
+
+data Wall
+  = NoWall
+  | Wall
+  deriving (Show)
+
+data AdvancedBuilding
+  = Church
+  | Library
+  deriving (Show)
+
+data House = House
+  { people :: Int }
+  deriving (Show)
+
+mkHouse :: Int -> House
+mkHouse x
+  | 1 <= x && x <= 4 = House { people = x }
+  | otherwise = House { people = (max 1 (min 4 x)) }
+
+data City = City
+  { cityCastle :: Castle
+  , cityWalls :: Wall
+  , cityBuilding :: AdvancedBuilding
+  , cityHouses :: [House]
+  } deriving (Show)
+
+buildCastle :: City -> String -> City
+buildCastle c n = c { cityCastle = Castle n }
+
+buildHouse :: City -> Int -> City
+buildHouse c n = c { cityHouses = (mkHouse n) : cityHouses c }
+
+buildWalls :: City -> City
+buildWalls c = case cityCastle c of
+  NoCastle -> c
+  _        -> if sum (map people (cityHouses c)) >= 10
+              then c { cityWalls = Wall }
+              else c
 
 {-
 =🛡= Newtypes
@@ -560,22 +640,31 @@ introducing extra newtypes.
 🕯 HINT: if you complete this task properly, you don't need to change the
     implementation of the "hitPlayer" function at all!
 -}
+
+newtype Attack = Attack Int
+newtype Strength = Strength Int
+newtype Armor = Armor Int
+newtype Dexterity = Dexterity Int
+newtype Health = Health Int
+newtype Damage = Damage Int
+newtype Defense = Defense Int
+
 data Player = Player
-    { playerHealth    :: Int
-    , playerArmor     :: Int
-    , playerAttack    :: Int
-    , playerDexterity :: Int
-    , playerStrength  :: Int
+    { playerHealth    :: Health
+    , playerArmor     :: Armor
+    , playerAttack    :: Attack
+    , playerDexterity :: Dexterity
+    , playerStrength  :: Strength
     }
 
-calculatePlayerDamage :: Int -> Int -> Int
-calculatePlayerDamage attack strength = attack + strength
+calculatePlayerDamage :: Attack -> Strength -> Damage
+calculatePlayerDamage (Attack a) (Strength s) = Damage (a + s)
 
-calculatePlayerDefense :: Int -> Int -> Int
-calculatePlayerDefense armor dexterity = armor * dexterity
+calculatePlayerDefense :: Armor -> Dexterity -> Defense
+calculatePlayerDefense (Armor a) (Dexterity d) = Defense (a * d)
 
-calculatePlayerHit :: Int -> Int -> Int -> Int
-calculatePlayerHit damage defense health = health + defense - damage
+calculatePlayerHit :: Damage -> Defense -> Health -> Health
+calculatePlayerHit (Damage d) (Defense def) (Health h) = Health (h + def - d)
 
 -- The second player hits first player and the new first player is returned
 hitPlayer :: Player -> Player -> Player
@@ -753,6 +842,15 @@ parametrise data types in places where values can be of any general type.
   maybe-treasure ;)
 -}
 
+data Dragon p = Dragon p
+
+data TreasureChest x = TreasureChest
+    { treasureChestGold :: Int
+    , treasureChestLoot :: x
+    }
+
+data Lair p t = Lair (Dragon p) (Maybe (TreasureChest t))
+
 {-
 =🛡= Typeclasses
 
@@ -910,6 +1008,21 @@ Implement instances of "Append" for the following types:
 class Append a where
     append :: a -> a -> a
 
+newtype Gold = Gold Int
+
+instance Append Gold where
+  append :: Gold -> Gold -> Gold
+  append (Gold x) (Gold y) = Gold (x + y)
+
+instance Append [a] where
+  append :: [a] -> [a] -> [a]
+  append = (++)
+
+instance Append a => Append (Maybe a) where
+  append :: Maybe a -> Maybe a -> Maybe a
+  append Nothing _ = Nothing
+  append _ Nothing = Nothing
+  append (Just x) (Just y) = Just (append x y)
 
 {-
 =🛡= Standard Typeclasses and Deriving
@@ -971,6 +1084,29 @@ implement the following functions:
 🕯 HINT: to implement this task, derive some standard typeclasses
 -}
 
+data DayOfWeek
+  = Monday
+  | Tuesday
+  | Wednesday
+  | Thursday
+  | Friday
+  | Saturday
+  | Sunday
+  deriving (Show, Enum)
+
+isWeekend :: DayOfWeek -> Bool
+isWeekend d = fromEnum d >= 5
+
+nextDay :: DayOfWeek -> DayOfWeek
+nextDay Sunday = Monday
+nextDay d = succ d
+
+daysToParty :: DayOfWeek -> Int
+daysToParty d = if result >= 0
+                then result
+                else 7 + result
+                where result = 4 - fromEnum d
+
 {-
 =💣= Task 9*
 
@@ -1006,6 +1142,189 @@ Implement data types and typeclasses, describing such a battle between two
 contestants, and write a function that decides the outcome of a fight!
 -}
 
+-- Couldn't make it simpler :(
+data KnightAction
+  = KnightAttack
+  | Drink
+  | Cast
+  deriving (Show)
+
+data MonsterAction
+  = MonsterAttack
+  | Run
+  deriving (Show)
+
+data Knight = Knight
+  { knightHealth :: Int
+  , knightAttack :: Int
+  , knightDefense :: Int
+  , knightActions :: [KnightAction]
+  , baseKnightHealth :: Int
+  , baseKnightHealthIncrease :: Int
+  , baseKnightDefense :: Int
+  , baseKnightDefenseIncrease :: Int
+  } deriving (Show)
+
+data Monster = Monster
+  { monsterHealth :: Int
+  , monsterAttack :: Int
+  , monsterActions :: [MonsterAction]
+  } deriving (Show)
+
+data ActionType
+  = GenericAttack
+  | SpecialAction
+  deriving (Show)
+
+getFirstKnightAction :: Knight -> KnightAction
+getFirstKnightAction Knight { knightActions = (x:_) } = x
+getFirstKnightAction _ = error "Forgot to 'cycle' knight actions"
+
+getFirstMonsterAction :: Monster -> MonsterAction
+getFirstMonsterAction Monster { monsterActions = (x:_) } = x
+getFirstMonsterAction _ = error "Forgot to 'cycle' monster actions"
+
+getFollowingKnightActions :: Knight -> [KnightAction]
+getFollowingKnightActions Knight { knightActions = (_:xs) } = xs
+getFollowingKnightActions _ = error "Forgot to 'cycle' knight actions"
+
+getFollowingMonsterAction :: Monster -> [MonsterAction]
+getFollowingMonsterAction Monster { monsterActions = (_:xs) } = xs
+getFollowingMonsterAction _ = error "Forgot to 'cycle' monster actions"
+
+
+class Fighter a where
+  nextAction :: a -> ActionType
+  processSpecial :: a -> a
+  processAttack :: a -> Int
+  proceed :: a -> a
+  getHealth :: a -> Int
+  takeDamage :: a -> Int -> a
+
+instance Fighter Knight where
+  nextAction :: Knight -> ActionType
+  nextAction k = case getFirstKnightAction k of
+    KnightAttack -> GenericAttack
+    _            -> SpecialAction
+
+  processSpecial :: Knight -> Knight
+  processSpecial k = case getFirstKnightAction k of
+    Drink -> k { knightHealth = knightHealth k + drinkAmount k }
+    Cast  -> k { knightDefense = knightDefense k + buffAmount k }
+    _     -> error "Something went wrong"
+
+  processAttack :: Knight -> Int
+  processAttack = knightAttack
+
+  proceed :: Knight -> Knight
+  proceed k = k { knightActions = getFollowingKnightActions k }
+
+  getHealth :: Knight -> Int
+  getHealth = knightHealth
+
+  -- 'Double' 'hacks' here and in a few places below: because I couldn't get it to work otherwise,
+  -- needed to match types.
+  takeDamage :: Knight -> Int -> Knight
+  takeDamage k damage = let d = (fromIntegral damage) :: Double
+                         in k { knightHealth = min 0 (knightHealth k - (floor (d * (d / 100.0)))) }
+
+-- Doesn't allow to heal over the base health
+drinkAmount :: Knight -> Int
+drinkAmount k = min (baseKnightHealthIncrease k) (baseKnightHealth k - (baseKnightHealth k))
+
+-- Diminishes buff amount when approaching 1.5x of base defense
+buffAmount :: Knight -> Int
+buffAmount k = let b = fromIntegral (baseKnightDefenseIncrease k) :: Double
+                   cap = 1.5 * fromIntegral (baseKnightDefense k)
+                   c = fromIntegral (knightDefense k)
+                in floor (b * ((cap - c) / cap))
+
+instance Fighter Monster where
+  nextAction :: Monster -> ActionType
+  nextAction m = case getFirstMonsterAction m of
+    MonsterAttack -> GenericAttack
+    _             -> SpecialAction
+
+  processSpecial :: Monster -> Monster
+  processSpecial m = case getFirstMonsterAction m of
+    Run -> m { monsterHealth = 0 }
+    _   -> error "Something went wrong"
+
+  processAttack :: Monster -> Int
+  processAttack = monsterAttack
+
+  proceed :: Monster -> Monster
+  proceed m = m { monsterActions = getFollowingMonsterAction m }
+
+  getHealth :: Monster -> Int
+  getHealth = monsterHealth
+
+  takeDamage :: Monster -> Int -> Monster
+  takeDamage m d = m { monsterHealth = min 0 (monsterHealth m - d) }
+
+data Turn
+  = First
+  | Second
+  deriving (Show)
+
+nextTurn :: Turn -> Turn
+nextTurn First = Second
+nextTurn Second = First
+
+updateF1 :: (Fighter a, Fighter b) => a -> b -> Turn -> a
+updateF1 f1 f2 t = case t of
+  First  -> case nextAction f1 of
+    GenericAttack -> proceed f1
+    SpecialAction -> proceed (processSpecial f1)
+  Second -> case nextAction f2 of
+    GenericAttack -> takeDamage f1 (processAttack f2)
+    SpecialAction -> f1
+  
+updateF2 :: (Fighter a, Fighter b) => a -> b -> Turn -> b
+updateF2 f1 f2 t = case t of
+  First  -> case nextAction f1 of
+    GenericAttack -> takeDamage f2 (processAttack f1)
+    SpecialAction -> f2
+  Second -> case nextAction f2 of
+    GenericAttack -> proceed f2
+    SpecialAction -> proceed (processSpecial f2)
+
+fight :: (Fighter a, Fighter b) => a -> b -> Turn -> String
+fight f1 f2 t = case getHealth f1 of
+  0 -> "Fighter 2 wins!"
+  _ -> case getHealth f2 of
+    0 -> "Fighter 1 wins!"
+    _ -> fight (updateF1 f1 f2 t) (updateF2 f1 f2 t) (nextTurn t)
+
+arthur :: Knight
+arthur = Knight
+  { knightHealth = 100
+  , knightAttack = 25
+  , knightDefense = 100
+  , knightActions = cycle [KnightAttack, Drink, KnightAttack, Cast]
+  , baseKnightHealth = 100
+  , baseKnightHealthIncrease = 25
+  , baseKnightDefense = 100
+  , baseKnightDefenseIncrease = 25
+  }
+
+hogger :: Monster
+hogger = Monster
+  { monsterHealth = 100
+  , monsterAttack = 25
+  , monsterActions = cycle (replicate 4 MonsterAttack ++ [Run])
+  }
+
+{- |
+>>> fight arthur hogger First
+"Fighter 1 wins!"
+>>> fight arthur hogger Second
+"Fighter 2 wins!"
+λ> 
+-}
+
+result :: String
+result = fight arthur hogger First
 
 {-
 You did it! Now it is time to open pull request with your changes
