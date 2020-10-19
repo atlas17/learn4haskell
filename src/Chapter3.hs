@@ -1320,7 +1320,6 @@ hogger = Monster
 "Fighter 1 wins!"
 >>> fight arthur hogger Second
 "Fighter 2 wins!"
-λ> 
 -}
 
 result :: String
